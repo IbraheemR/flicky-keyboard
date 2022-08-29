@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" style="width: 100%; height: 100%; font-family: monospace;">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flicky App</title>
+</head>
+
+<body style="display: grid; width: 100%; height: 100%; overflow: hidden;">
+
+    <canvas style="border: 2px solid black; margin: auto; position: relative" , width="250" height="250">
+    </canvas>
+
+    <textarea style="font-size: 1.5rem;"></textarea>
+
+    <script>
+        // Note to self - I was thinking about arranging so most common characters are closest to the center.
+        // However unlike a keyboard travel time between keys matters here - maybe I should optimise closeness of common character pairs
+        // Also maybe more common characters should have more space around them (i.e more area on the voronoi diagram) thus being easier to reach
+        const CHARACTERS = [
+            // Dead space, special chars
+            {char: "BK", x: 0.1, y: 0.5}, 
+            {char: "BK", x: 0.2, y: 0.5}, 
+            {char: "BK", x: 0.3, y: 0.5}, 
+            {char: "BK", x: 0.4, y: 0.5},
+            {char: "SP", x: 0.5, y: 0.5}, 
+            {char: "RT", x: 0.6, y: 0.5},
+            {char: "RT", x: 0.7, y: 0.5}, 
+            {char: "RT", x: 0.8, y: 0.5}, 
+            {char: "RT", x: 0.9, y: 0.5}, 
+
+            {char: "SP", x: 0.5, y: 0.1}, 
+            {char: "SP", x: 0.5, y: 0.2}, 
+            {char: "SP", x: 0.5, y: 0.3}, 
+            {char: "SP", x: 0.5, y: 0.4}, 
+            {char: "SP", x: 0.5, y: 0.6},
+            {char: "SP", x: 0.5, y: 0.7}, 
+            {char: "SP", x: 0.5, y: 0.8}, 
+            {char: "SP", x: 0.5, y: 0.9}, 
+
+
+            
+            {char: "A", x: 0.2, y: 0.1},
+            {char: "B", x: 0.3, y: 0.1},
+            {char: "C", x: 0.4, y: 0.1},
+            {char: "D", x: 0.6, y: 0.1},
+            {char: "E", x: 0.7, y: 0.1},
+            {char: "F", x: 0.8, y: 0.1},
+            {char: "G", x: 0.1, y: 0.2},
+            {char: "H", x: 0.2, y: 0.2},
+            {char: "I", x: 0.3, y: 0.2},
+            {char: "J", x: 0.4, y: 0.2},
+            {char: "K", x: 0.6, y: 0.2},
+            {char: "L", x: 0.7, y: 0.2},
+            {char: "M", x: 0.8, y: 0.2},
+            {char: "N", x: 0.9, y: 0.2},
+            {char: "O", x: 0.1, y: 0.3},
+            {char: "P", x: 0.2, y: 0.3},
+            {char: "Q", x: 0.3, y: 0.3},
+            {char: "R", x: 0.4, y: 0.3},
+            {char: "S", x: 0.6, y: 0.3},
+            {char: "T", x: 0.7, y: 0.3},
+            {char: "U", x: 0.8, y: 0.3},
+            {char: "V", x: 0.9, y: 0.3},
+            {char: "W", x: 0.1, y: 0.4},
+            {char: "X", x: 0.2, y: 0.4},
+            {char: "Y", x: 0.3, y: 0.4},
+            {char: "Z", x: 0.4, y: 0.4},
+
+            {char: "#", x: 0.6, y: 0.4},
+            {char: "#", x: 0.7, y: 0.4},
+            {char: "#", x: 0.8, y: 0.4},
+            {char: "#", x: 0.9, y: 0.4},
+
+            {char: "#", x: 0.1, y: 0.6},
+            {char: "#", x: 0.2, y: 0.6},
+            {char: "#", x: 0.3, y: 0.6},
+            {char: "#", x: 0.4, y: 0.6},
+            {char: "#", x: 0.6, y: 0.6},
+            {char: "#", x: 0.7, y: 0.6},
+            {char: "#", x: 0.8, y: 0.6},
+            {char: "#", x: 0.9, y: 0.6},
+
+            {char: "#", x: 0.1, y: 0.7},
+            {char: "#", x: 0.2, y: 0.7},
+            {char: "#", x: 0.3, y: 0.7},
+            {char: "#", x: 0.4, y: 0.7},
+            {char: "#", x: 0.6, y: 0.7},
+            {char: "#", x: 0.7, y: 0.7},
+            {char: "#", x: 0.8, y: 0.7},
+            {char: "#", x: 0.9, y: 0.7},
+
+            {char: "#", x: 0.1, y: 0.8},
+            {char: "#", x: 0.2, y: 0.8},
+            {char: "#", x: 0.3, y: 0.8},
+            {char: "#", x: 0.4, y: 0.8},
+            {char: "#", x: 0.6, y: 0.8},
+            {char: "#", x: 0.7, y: 0.8},
+            {char: "#", x: 0.8, y: 0.8},
+            {char: "#", x: 0.9, y: 0.8},
+
+            {char: "#", x: 0.2, y: 0.9},
+            {char: "#", x: 0.3, y: 0.9},
+            {char: "#", x: 0.4, y: 0.9},
+            {char: "#", x: 0.6, y: 0.9},
+            {char: "#", x: 0.7, y: 0.9},
+            {char: "#", x: 0.8, y: 0.9},
+        ]
+
+        function getNearest(x, y) {
+            distances = CHARACTERS.map(({char, x:xc, y:yc}, index) => {
+                return {char, index, dist2: Math.pow(xc - x, 2) + Math.pow(yc - y, 2)}
+            })
+
+            distances.sort((a, b) => a.dist2 - b.dist2)
+
+            return distances[0]
+        }
+
+        let textarea = document.querySelector('textarea');
+
+        let canvas = document.querySelector('canvas');
+
+        let ctx = canvas.getContext('2d');
+
+        let xPoint = 0.5, yPoint = 0.5;
+        const w = canvas.width, h = canvas.height;
+
+        let nearestKey;
+
+        let ws = new WebSocket('ws://localhost:3001');
+        ws.addEventListener("message", message => {
+            let data = message.data;
+
+            let { groups: { x, y } } = /x(?<x>\d+)y(?<y>\d+)/.exec(data);
+
+            if (x) xPoint = x / 1024;
+            if (y) yPoint = y / 1024;
+
+        })
+
+
+        function render() {
+            ctx.clearRect(0, 0, w, h);
+            nearestKey = getNearest(xPoint, yPoint);
+
+            ctx.fillStyle = "#000";
+            for (let i=0; i<CHARACTERS.length; i++) {
+                let {char, x, y} = CHARACTERS[i];
+                if (i === nearestKey.index) {
+                    ctx.fillStyle = "#0f0";
+                    ctx.fillRect(x * w - 7, y * h - 12, 20, 20);
+                    ctx.fillStyle = "#000";
+                }
+                ctx.font = "1.2rem monospace";
+                ctx.fillText(char, x * w, y * h);
+            }
+
+
+            ctx.strokeStyle = "#F55";
+            ctx.strokeRect(parseInt(w * xPoint) - 4.5, parseInt(h * yPoint) - 4.5, 10, 10);
+
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+
+        addEventListener("keypress", (e) => {
+            if (e.keyCode === 32) { // Spacebar
+                e.preventDefault();
+                let {char} = nearestKey;
+                if (char === "BK") {
+                    textarea.value = textarea.value.slice(0, -1);
+                } else if (char === "SP") {
+                    textarea.value += " ";
+                } else if (char === "RT") {
+                    textarea.value += "\n";
+                 } else {
+                    textarea.value += char;
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
